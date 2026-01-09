@@ -9,3 +9,14 @@ nalgebra = "0.34.1"
 statrs = "0.18.0"
 plotters="0.3"
 plotters-iced2 = "0.14"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tracing-subscriber = "0.3"
+open = "5"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+iced = {version = "0.14", features = ["canvas", "tokio", "image", "debug", "webgl", "fira-sans"]}
+getrandom = { version = "0.2", features = ["js"] }
+
+console_error_panic_hook = "0.1"
+console_log = "1.0"

@@ -17,11 +17,14 @@ use custom_widgets::{
 
 use iced::Alignment::Center;
 use iced::window::Settings;
-use iced::{Element, Left, Length};
+use iced::{Element, Font, Left, Length};
 use iced::widget::{button, column, container, rule, row, scrollable, text, pick_list, tooltip, Column, responsive};
 
+/// Font to be used by all text rendered with Iced
+// Imported from enabling Iced's "fira-sans" feature
+const FONT_NAME: &str = "Fira Sans";
 
-/// Sets the limits for the number of decimal points the calculator will output and the amount for inputs
+/// Limits the number of decimal points the calculator will output and the amount for inputs
 const MAX_DP: usize = 3;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -77,11 +80,21 @@ impl PayoffYAxis {
 }
 
 pub fn main() -> iced::Result {
+    #[cfg(target_arch = "wasm32")]
+    {
+        console_log::init().expect("Initialize logger");
+        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    tracing_subscriber::fmt::init();
+
     let mut window_setting = Settings::default();
-    window_setting.min_size = Some((600.0, 400.0).into());
+    window_setting.min_size = Some((900.0, 400.0).into());
 
     iced::application(OptionCalculator::default, OptionCalculator::update, OptionCalculator::view)
         .antialiasing(true)
+        .default_font(Font::with_name(FONT_NAME))
         .window(window_setting)
         .run()
 }
@@ -338,7 +351,7 @@ impl OptionCalculator {
                 func2 = Box::new(|(start_env, end_env, contract, predict)| T::roi(&start_env, &end_env, &contract, &predict))
             }
             PayoffYAxis::Nominal => {
-                func2 = Box::new(|(start_env, mut end_env, contract, predict)| {
+                func2 = Box::new(|(_start_env, mut end_env, contract, predict)| {
                     let end_contract;
                     (end_env, end_contract) = predict.apply(end_env, contract);
                     T::bsm_price(&end_env, &end_contract)
@@ -501,58 +514,62 @@ impl OptionCalculator {
 
     fn view(&self) -> Element<'_, Message> {
         row![
-            scrollable(
-                column![
-                    tooltip(
-                        text("Environment").size(30),
-                        container("Details about the stock in the current moment")
-                            .padding(5)
-                            .style(container::rounded_box),
-                        tooltip::Position::FollowCursor
-                    ),
-                    text!("Stock price"),
-                    self.param[0].view().map(|number_msg| Message::NumberInputMessage(0, number_msg)),
-                    text!("Volatility"),
-                    self.param[1].view().map(|number_msg| Message::NumberInputMessage(1, number_msg)),
-                    text!("Risk free rate"),
-                    self.param[2].view().map(|number_msg| Message::NumberInputMessage(2, number_msg)),
-                    text!("Dividend yield"),
-                    self.param[3].view().map(|number_msg| Message::NumberInputMessage(3, number_msg)),
-                    rule::horizontal(5),
-                    tooltip(
-                        text("Prediction").size(30),
-                        container("Prediction on what price the stock will reach and when")
-                            .padding(5)
-                            .style(container::rounded_box),
-                        tooltip::Position::FollowCursor
-                    ),
-                    text!("Prediction stock price"),
-                    self.param[4].view().map(|number_msg| Message::NumberInputMessage(4, number_msg)),
-                    text!("Prediction end duration"),
-                    self.param[5].view().map(|number_msg| Message::NumberInputMessage(5, number_msg)),
-                    button("Calculate").on_press(Message::Calculate),
-                    rule::horizontal(5),
-                    tooltip(
-                        Column::with_children(
-                            self.answer_text_block().into_iter().map(|s| text(s).size(20).into())
-                        ),
-                        container("The option contract to buy immediately and to sell \nat the prediction end duration that maximises ROI. \nAssumes that: \n - Environment variables (except stock price)\n   stay constant \n - Prediction becomes perfectly true")
-                            .padding(5)
-                            .style(container::rounded_box),
-                        tooltip::Position::FollowCursor
-                    ),
-                    rule::horizontal(5),
+            scrollable(column![
+                tooltip(
+                    text("Environment").size(30),
+                    container("Details about the stock in the current moment")
+                        .padding(5)
+                        .style(container::rounded_box),
+                    tooltip::Position::FollowCursor
+                ),
+                text!("Stock price"),
+                self.param[0].view().map(|number_msg| Message::NumberInputMessage(0, number_msg)),
+                text!("Volatility"),
+                self.param[1].view().map(|number_msg| Message::NumberInputMessage(1, number_msg)),
+                text!("Risk free rate"),
+                self.param[2].view().map(|number_msg| Message::NumberInputMessage(2, number_msg)),
+                text!("Dividend yield"),
+                self.param[3].view().map(|number_msg| Message::NumberInputMessage(3, number_msg)),
 
-                    self.sliders.view(|x| x.spacing(5)).map(|msg| Message::Sliders(msg)),
-                    row![
-                        pick_list(Adjustables::everything(), self.slider_add_select, Message::SliderSelect)
-                            .placeholder("Choose Variable"),
-                        button("Add Slider").on_press(Message::SliderAdd),
-                    ]
-                ].padding(20)
-                .spacing(5)
-                .width(350)
-                .align_x(Left)),
+                rule::horizontal(2),
+
+                tooltip(
+                    text("Prediction").size(30),
+                    container("Prediction on what price the stock will reach and when")
+                        .padding(5)
+                        .style(container::rounded_box),
+                    tooltip::Position::FollowCursor
+                ),
+                text!("Prediction stock price"),
+                self.param[4].view().map(|number_msg| Message::NumberInputMessage(4, number_msg)),
+                text!("Prediction end duration"),
+                self.param[5].view().map(|number_msg| Message::NumberInputMessage(5, number_msg)),
+                button("Calculate").on_press(Message::Calculate),
+
+                rule::horizontal(2),
+
+                tooltip(
+                    Column::with_children(
+                        self.answer_text_block().into_iter().map(|s| text(s).size(20).into())
+                    ),
+                    container("The option contract to buy immediately and to sell \nat the prediction end duration that maximises ROI. \nAssumes that: \n - Environment variables (except stock price)\n   stay constant \n - Prediction becomes perfectly true")
+                        .padding(5)
+                        .style(container::rounded_box),
+                    tooltip::Position::FollowCursor
+                ),
+
+                rule::horizontal(2),
+
+                self.sliders.view(|x| x.spacing(5)).map(|msg| Message::Sliders(msg)),
+                row![
+                    pick_list(Adjustables::everything(), self.slider_add_select, Message::SliderSelect)
+                        .placeholder("Choose Variable"),
+                    button("Add Slider").on_press(Message::SliderAdd),
+                ]
+            ].padding(20)
+            .spacing(5)
+            .width(350)
+            .align_x(Left)),
 
             rule::vertical(2),
 

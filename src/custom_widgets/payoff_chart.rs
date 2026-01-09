@@ -17,6 +17,10 @@ const CHART_RESOLUTION: i32 = 501;
 /// Determines chart title text size
 const CHART_TITLE_SIZE: u32 = 25;
 
+/// Font used for any text rendered by plotters
+// Imported from enabling iced's "fira-sans" feature
+const CHART_FONT_NAME: &str = "Fira Sans";
+
 /// Chart widget to handle drawing a single payoff chart.
 /// Support drawing an ROI graph or a nominal return graph.
 pub struct PayoffChart {
@@ -161,8 +165,10 @@ impl Chart<PayoffChartMessage> for PayoffChart {
             .build_cartesian_2d(x_range_exclusive, y_range_exclusive)
             .expect("failed to build chart");
 
+        // General chart formatting
         chart
             .configure_mesh()
+            .label_style((CHART_FONT_NAME).into_font())
             .bold_line_style(plotters::style::colors::BLUE.mix(0.1))
             .light_line_style(plotters::style::colors::BLUE.mix(0.05))
             .axis_style(ShapeStyle::from(plotters::style::colors::BLUE.mix(0.45)).stroke_width(1))
@@ -180,7 +186,8 @@ impl Chart<PayoffChartMessage> for PayoffChart {
                 )
                 .border_style(ShapeStyle::from(BLUE_LINE_COLOR).stroke_width(2)),
             ).expect("failed to draw chart data")
-            .label(self.labels[0].to_owned())
+            // Empty spaces to act as margin
+            .label(format!("{}   ", self.labels[0].to_owned()))
             // y+5 is to lower the legend-line to be inline with the label
             .legend(|(x, y)| PathElement::new(vec![(x, y+5), (x + 20, y+5)], BLUE_LINE_COLOR));
 
@@ -193,12 +200,10 @@ impl Chart<PayoffChartMessage> for PayoffChart {
                 )
                 .border_style(ShapeStyle::from(RED_LINE_COLOR).stroke_width(2)),
             ).expect("failed to draw chart data")
-            .label(self.labels[1].to_owned())
+            // Empty spaces to act as margin
+            .label(format!("{}   ", self.labels[1].to_owned()))
             // y+5 is to lower the legend-line to be inline with the label
             .legend(|(x, y)| PathElement::new(vec![(x, y+5), (x + 20, y+5)], RED_LINE_COLOR));
-
-        chart.configure_series_labels().border_style(BLACK).draw().expect("failed to draw line labels");
-
         
         // Draw vertical crosshair line (if valid)
         if let Some(x_vert) = self.x_vert {
@@ -207,22 +212,29 @@ impl Chart<PayoffChartMessage> for PayoffChart {
                 return;
             }
             chart.draw_series(
-                    LineSeries::new(
-                        [(x_vert, 0.0), (x_vert, f64::MAX)].iter().map(|&x| x),
-                        BLACK_LINE_COLOR
-                    )
-                ).expect("failed to draw chart data");
+                LineSeries::new(
+                    [(x_vert, 0.0), (x_vert, f64::MAX)].iter().map(|&x| x),
+                    BLACK_LINE_COLOR
+                )
+            ).expect("failed to draw chart data");
             // Highlight where vertical line intersects main function
             chart.draw_series(PointSeries::of_element(
-            iter::once((x_vert, val)),
-            5,
-            ShapeStyle::from(&RED).filled(),
-            &|coord, size, style| {
-                EmptyElement::at(coord)
+                iter::once((x_vert, val)),
+                5,
+                ShapeStyle::from(&RED).filled(),
+                &|coord, size, style| {
+                    EmptyElement::at(coord)
                     + Circle::new((0, 0), size, style)
-                    + Text::new(format!("({:.3}, {:.3})", coord.0, coord.1), (0, 15), ("sans-serif", 15))
+                    + Text::new(format!("({:.3}, {:.3})", coord.0, coord.1), (0, 15), (CHART_FONT_NAME, 15))
                 },
             )).expect("failed to draw chart data");
         }
+
+        // Draw line legends
+        chart.configure_series_labels()
+            .border_style(BLACK)
+            .label_font((CHART_FONT_NAME, 15))
+            .draw()
+            .expect("failed to draw line labels");
     }
 }
