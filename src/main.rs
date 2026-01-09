@@ -17,8 +17,8 @@ use custom_widgets::{
 
 use iced::Alignment::Center;
 use iced::window::Settings;
-use iced::{Element, Font, Left, Length};
-use iced::widget::{button, column, container, rule, row, scrollable, text, pick_list, tooltip, Column, responsive};
+use iced::{Element, Font, Left, Length, Subscription, Task};
+use iced::widget::{Column, button, column, container, operation, pick_list, responsive, row, rule, scrollable, text, tooltip};
 
 /// Font to be used by all text rendered with Iced
 // Imported from enabling Iced's "fira-sans" feature
@@ -95,6 +95,7 @@ pub fn main() -> iced::Result {
     iced::application(OptionCalculator::default, OptionCalculator::update, OptionCalculator::view)
         .antialiasing(true)
         .default_font(Font::with_name(FONT_NAME))
+        .subscription(OptionCalculator::subscription)
         .window(window_setting)
         .run()
 }
@@ -177,6 +178,7 @@ enum Message {
     ChartXSelect(Adjustables),
     ChartYSelect(PayoffYAxis),
     ChartAdd,
+    TabPressed,
 }
 
 impl OptionCalculator {
@@ -397,7 +399,7 @@ impl OptionCalculator {
         return Box::new(move |x| func2(func1(func0(x))));
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Calculate => {
                 // Validate and extract inputs
@@ -414,7 +416,7 @@ impl OptionCalculator {
                     //     String::new(),
                     //     String::new(),
                     // ];
-                    return;
+                    return Task::none();
                 }
 
                 
@@ -468,9 +470,11 @@ impl OptionCalculator {
                 for i in 0..self.sliders.data.len() {
                     self.configure_slider(i);
                 }
+                return Task::none();
             }
             Message::NumberInputMessage(i, number_msg) => {
                 self.param[i].update(number_msg);
+                return Task::none();
             }
             Message::Sliders(list_message) => {
                 self.sliders.update(list_message.clone());
@@ -481,7 +485,7 @@ impl OptionCalculator {
                     let val = self.sliders.data[i].1.get_value();
                     self.set_adjustable(var, val);
                 } else {
-                    return;
+                    return Task::none();
                 }
 
                 // Update valid ranges the sliders can take up
@@ -495,9 +499,11 @@ impl OptionCalculator {
                 for i in 0..self.charts.data.len() {
                     self.configure_chart(i);
                 }
+                return Task::none();
             }
             Message::SliderSelect(variable) => {
-                self.slider_add_select = Some(variable)
+                self.slider_add_select = Some(variable);
+                return Task::none();
             }
             Message::SliderAdd => {
                 if let Some(variable) = self.slider_add_select {
@@ -507,12 +513,15 @@ impl OptionCalculator {
                     self.sliders.unique_push(variable, slider);
                     self.configure_slider(self.sliders.data.len()-1);
                 }
+                return Task::none();
             }
             Message::ChartXSelect(variable) => {
-                self.chart_x_select = Some(variable)
+                self.chart_x_select = Some(variable);
+                return Task::none();
             }
             Message::ChartYSelect(y) => {
-                self.chart_y_select = Some(y)
+                self.chart_y_select = Some(y);
+                return Task::none();
             }
             Message::ChartAdd => {
                 if let (Some(y_axis), Some(x_axis)) = (self.chart_y_select, self.chart_x_select) {
@@ -527,9 +536,14 @@ impl OptionCalculator {
                     chart.set_func(func);
                     self.charts.unique_push((y_axis, x_axis), chart);
                 }
+                return Task::none();
             }
             Message::Charts(list_msg) => {
                 self.charts.update(list_msg);
+                return Task::none();
+            }
+            Message::TabPressed => {
+                return operation::focus_next();
             }
         }
     }
@@ -614,6 +628,22 @@ impl OptionCalculator {
                 ).into()
             })
         ].into()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        use iced::keyboard;
+
+        keyboard::listen().filter_map(|event| match event {
+            keyboard::Event::KeyPressed {
+                key: keyboard::Key::Named(key),
+                modifiers,
+                ..
+            } => match (key, modifiers) {
+                (keyboard::key::Named::Tab, _) => Some(Message::TabPressed),
+                _ => None,
+            }
+            _ => None,
+        })
     }
 }
 
