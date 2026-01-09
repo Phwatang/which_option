@@ -194,7 +194,7 @@ impl Chart<PayoffChartMessage> for PayoffChart {
         // Draw profit benchmark line
         chart.draw_series(
                 AreaSeries::new(
-                    x_linspace.iter().map(|&x| (x, 1.0)),
+                    x_linspace.iter().map(|&x| (x, self.benchmark)),
                     0.0,
                     RED_LINE_COLOR.mix(0.175),
                 )

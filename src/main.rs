@@ -292,6 +292,41 @@ impl OptionCalculator {
         slider.set_value(val);
     }
 
+    /// Configures a payoff chart within the chartlist at a given index
+    fn configure_chart(&mut self, i: usize) {
+        let (y_axis, x_axis);
+        // Check validity of i
+        if let Some(((_y_axis, _x_axis), _)) = self.charts.data.get(i) {
+            (y_axis, x_axis) = (*_y_axis, *_x_axis);
+        } else {
+            return;
+        }
+        let x_range = self.ranges[x_axis as usize].clone();
+        let x_val = self.get_adjustable(x_axis);
+        let func;
+        // If using call options
+        if self.answers.0 {
+            func = self.get_parameterisation::<Call>(y_axis, x_axis);
+        } else { // Elsewise using put option
+            func = self.get_parameterisation::<Put>(y_axis, x_axis);
+        }
+        let (_, chart) = &mut self.charts.data[i];
+        chart.set_func(func)
+            .set_xrange(x_range)
+            .set_x_vert(x_val);
+
+        // Update entry price benchmark
+        let mut entry = 1.0;
+        if y_axis == PayoffYAxis::Nominal {
+            if self.answers.0 {
+                entry = Call::bsm_price(&self.start_env, &self.contract);
+            } else {
+                entry = Put::bsm_price(&self.start_env, &self.contract);
+            }
+        }
+        chart.set_benchmark_height(entry);
+    }
+
     /// Generates a single variable function that encapsulate a blackscholes calculation with 1 variable free. These
     /// should be given to the payoff graphs to be plotted.
     fn get_parameterisation<T: BlackScholesROI>(&self, out: PayoffYAxis, var: Adjustables) -> Box<dyn Fn(f64) -> f64> {
@@ -348,7 +383,7 @@ impl OptionCalculator {
         let func2: Box<dyn Fn((Environment, Environment, Contract, Movement)) -> f64>;
         match out {
             PayoffYAxis::ROI => {
-                func2 = Box::new(|(start_env, end_env, contract, predict)| T::roi(&start_env, &end_env, &contract, &predict))
+                func2 = Box::new(|(start_env, end_env, contract, predict)| T::roi(&start_env, &end_env, &contract, &predict));
             }
             PayoffYAxis::Nominal => {
                 func2 = Box::new(|(_start_env, mut end_env, contract, predict)| {
@@ -458,20 +493,7 @@ impl OptionCalculator {
                 }
 
                 for i in 0..self.charts.data.len() {
-                    let ((y_axis, x_axis), _) = &self.charts.data[i];
-                    let x_range = self.ranges[*x_axis as usize].clone();
-                    let x_val = self.get_adjustable(*x_axis);
-                    let func;
-                    // If using call options
-                    if self.answers.0 {
-                        func = self.get_parameterisation::<Call>(*y_axis, *x_axis);
-                    } else { // Elsewise using put option
-                        func = self.get_parameterisation::<Put>(*y_axis, *x_axis);
-                    }
-                    let (_, chart) = &mut self.charts.data[i];
-                    chart.set_func(func)
-                        .set_xrange(x_range)
-                        .set_x_vert(x_val);
+                    self.configure_chart(i);
                 }
             }
             Message::SliderSelect(variable) => {
