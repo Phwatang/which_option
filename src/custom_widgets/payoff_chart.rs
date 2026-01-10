@@ -187,7 +187,7 @@ impl Chart<PayoffChartMessage> for PayoffChart {
                 .border_style(ShapeStyle::from(BLUE_LINE_COLOR).stroke_width(2)),
             ).expect("failed to draw chart data")
             // Empty spaces to act as margin
-            .label(format!("{}   ", self.labels[0].to_owned()))
+            .label(format!("{}", self.labels[0].to_owned()))
             // y+5 is to lower the legend-line to be inline with the label
             .legend(|(x, y)| PathElement::new(vec![(x, y+5), (x + 20, y+5)], BLUE_LINE_COLOR));
 
@@ -201,10 +201,25 @@ impl Chart<PayoffChartMessage> for PayoffChart {
                 .border_style(ShapeStyle::from(RED_LINE_COLOR).stroke_width(2)),
             ).expect("failed to draw chart data")
             // Empty spaces to act as margin
-            .label(format!("{}   ", self.labels[1].to_owned()))
+            .label(format!("{}\n({:.2})", self.labels[1].to_owned(), self.benchmark))
             // y+5 is to lower the legend-line to be inline with the label
             .legend(|(x, y)| PathElement::new(vec![(x, y+5), (x + 20, y+5)], RED_LINE_COLOR));
         
+        // Invisible filler line.
+        // Only being used to we can add an invisible line to the lineseries label box. For some reason
+        // the \n character printed from the series label before this is not respected during margin calculations
+        // when drawing the border box.
+        chart.draw_series(
+                AreaSeries::new(
+                    x_linspace.iter().map(|&x| (x, x)),
+                    0.0,
+                    BLACK_LINE_COLOR.mix(0.0)
+                )
+                .border_style(ShapeStyle::from(RED_LINE_COLOR).stroke_width(0))
+            )
+            .expect("failed to draw chart data")
+            .label(" ");
+
         // Draw vertical crosshair line (if valid)
         if let Some(x_vert) = self.x_vert {
             let val = (self.func)(x_vert);
