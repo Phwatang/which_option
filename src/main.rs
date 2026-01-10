@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 mod blackscholes;
 use blackscholes::{
     Environment, Contract, Movement,
-    BlackScholes, BlackScholesROI,
+    BlackScholesRounded, BlackScholesROI, BlackScholesROIRounded,
     Call, Put,
 };
 
@@ -19,6 +19,8 @@ use iced::Alignment::Center;
 use iced::window::Settings;
 use iced::{Element, Font, Left, Length, Subscription, Task};
 use iced::widget::{Column, button, column, container, operation, pick_list, responsive, row, rule, scrollable, text, tooltip};
+
+use rust_decimal::prelude::{ToPrimitive};
 
 /// Font to be used by all text rendered with Iced
 // Imported from enabling Iced's "fira-sans" feature
@@ -212,8 +214,8 @@ impl OptionCalculator {
         }
         out[1] = format!("Strike: {:.3}", self.answers.1.strike);
         out[2] = format!("Expiry: {:.3}", self.answers.1.expiry);
-        out[3] = format!("Buy Price: {:.3}", self.answers.2);
-        out[4] = format!("Sell Price: {:.3}", self.answers.3);
+        out[3] = format!("Buy Price: {:.2}", self.answers.2);
+        out[4] = format!("Sell Price: {:.2}", self.answers.3);
         out[5] = format!("ROI: {:.3}", self.answers.4);
         return out;
     }
@@ -321,17 +323,21 @@ impl OptionCalculator {
         let mut entry = 1.0;
         if y_axis == PayoffYAxis::Nominal {
             if self.answers.0 {
-                entry = Call::bsm_price(&self.start_env, &self.contract);
+                entry = Call::bsm_price_buy(&self.start_env, &self.contract).to_f64().unwrap_or(0.01);
             } else {
-                entry = Put::bsm_price(&self.start_env, &self.contract);
+                entry = Put::bsm_price_buy(&self.start_env, &self.contract).to_f64().unwrap_or(0.01);
             }
         }
         chart.set_benchmark_height(entry);
     }
 
-    /// Generates a single variable function that encapsulate a blackscholes calculation with 1 variable free. These
+    /// Generates a single variable function that encapsulate a (practical) blackscholes calculation with 1 variable free. These
     /// should be given to the payoff graphs to be plotted.
-    fn get_parameterisation<T: BlackScholesROI>(&self, out: PayoffYAxis, var: Adjustables) -> Box<dyn Fn(f64) -> f64> {
+    /// 
+    /// Practical meaning that prices within calculations are rounded to 2 d.p in the appropriate direction for buying/selling.
+    fn get_parameterisation<T: BlackScholesROIRounded>(&self, out: PayoffYAxis, var: Adjustables) -> Box<dyn Fn(f64) -> f64> {
+        use rust_decimal::prelude::ToPrimitive;
+
         // Clone appropriate data
         let func0 = {
             let start_env = self.start_env.clone();
@@ -385,13 +391,15 @@ impl OptionCalculator {
         let func2: Box<dyn Fn((Environment, Environment, Contract, Movement)) -> f64>;
         match out {
             PayoffYAxis::ROI => {
-                func2 = Box::new(|(start_env, end_env, contract, predict)| T::roi(&start_env, &end_env, &contract, &predict));
+                func2 = Box::new(|(start_env, end_env, contract, movement)| {
+                    let roi = T::roi_practical(&start_env, &end_env, &contract, &movement);
+                    roi.to_f64().unwrap_or(0.0)
+                });
             }
             PayoffYAxis::Nominal => {
-                func2 = Box::new(|(_start_env, mut end_env, contract, predict)| {
-                    let end_contract;
-                    (end_env, end_contract) = predict.apply(end_env, contract);
-                    T::bsm_price(&end_env, &end_contract)
+                func2 = Box::new(|(start_env, end_env, contract, movement)| {
+                    let (_, exit) = T::buy_sell_prices_practical(&start_env, &end_env, &contract, &movement);
+                    exit.to_f64().unwrap_or(0.0)
                 })
             }
         }
@@ -418,41 +426,34 @@ impl OptionCalculator {
                     // ];
                     return Task::none();
                 }
-
                 
                 // Predicting stock to go up then we should use a call option
                 if self.movement.stock >= self.start_env.stock {
                     // Find best contract given starting environment and predicted price movement
                     self.contract = Call::find_best_contract(&self.start_env, &self.start_env, &self.movement);
-                    let end_contract: Contract;
-                    (self.end_env, end_contract) = self.movement.apply(self.start_env.clone(), self.contract.clone());
-                    let buy_price = Call::bsm_price(&self.start_env, &self.contract);
-                    let sell_price = Call::bsm_price(&self.end_env, &end_contract);
-                    let roi = Call::roi(&self.start_env, &self.start_env, &self.contract, &self.movement);
+                    let (buy_price, sell_price) = Call::buy_sell_prices_practical(&self.start_env, &self.end_env, &self.contract, &self.movement);
+                    let roi = sell_price / buy_price;
 
                     self.answers = (
                         true,
                         self.contract.clone(),
-                        buy_price,
-                        sell_price,
-                        roi,
+                        buy_price.to_f64().unwrap_or(0.0),
+                        sell_price.to_f64().unwrap_or(0.0),
+                        roi.to_f64().unwrap_or(0.0),
                     );
 
                 } else { // Elsewise we use a put option
                     // Find best contract given starting environment and predicted price movement
                     self.contract = Put::find_best_contract(&self.start_env, &self.start_env, &self.movement);
-                    let end_contract: Contract;
-                    (self.end_env, end_contract) = self.movement.apply(self.start_env.clone(), self.contract.clone());
-                    let buy_price = Call::bsm_price(&self.start_env, &self.contract);
-                    let sell_price = Call::bsm_price(&self.end_env, &end_contract);
-                    let roi = Put::roi(&self.start_env, &self.start_env, &self.contract, &self.movement);
+                    let (buy_price, sell_price) = Put::buy_sell_prices_practical(&self.start_env, &self.end_env, &self.contract, &self.movement);
+                    let roi = sell_price / buy_price;
 
                     self.answers = (
                         false,
                         self.contract.clone(),
-                        buy_price,
-                        sell_price,
-                        roi,
+                        buy_price.to_f64().unwrap_or(0.0),
+                        sell_price.to_f64().unwrap_or(0.0),
+                        roi.to_f64().unwrap_or(0.0),
                     );
                 }
                 // Configure ranges
@@ -598,7 +599,16 @@ impl OptionCalculator {
                     Column::with_children(
                         self.answer_text_block().into_iter().map(|s| text(s).size(20).into())
                     ),
-                    container("The option contract to buy immediately and to sell \nat the prediction end duration that maximises ROI. \nAssumes that: \n - Environment variables (except stock price)\n   stay constant \n - Prediction becomes perfectly true")
+                    container(
+                            "The option contract to buy immediately and to sell\n\
+                            at the prediction end duration that maximises ROI.\n\
+                            Assumes that:\n\
+                            \x20- Environment variables (except stock price)\n\
+                            \x20  stay constant\n\
+                            \x20- Prediction becomes perfectly true\n\
+                            \x20- Strike and expiry are chosen based on\n\
+                            \x20  \"perfectly smooth\" payoff graphs"
+                        )
                         .padding(5)
                         .style(container::rounded_box),
                     tooltip::Position::FollowCursor
