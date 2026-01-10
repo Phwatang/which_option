@@ -466,10 +466,20 @@ impl OptionCalculator {
                     slider.set_title(format!("{}", Adjustables::Strike));
                     self.sliders.unique_push(Adjustables::Strike, slider);
                 }
-                // Configure slider values and ranges
+                // Add the ROI-strike payoff chart if nothing is present
+                if self.charts.data.is_empty() {
+                    let chart = self.create_chart(PayoffYAxis::ROI, Adjustables::Strike);
+                    self.charts.unique_push((PayoffYAxis::ROI, Adjustables::Strike), chart);
+                }
+
+                // Configure sliders and charts
                 for i in 0..self.sliders.data.len() {
                     self.configure_slider(i);
                 }
+                for i in 0..self.charts.data.len() {
+                    self.configure_chart(i);
+                }
+
                 return Task::none();
             }
             Message::NumberInputMessage(i, number_msg) => {
