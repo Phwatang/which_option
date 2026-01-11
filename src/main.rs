@@ -108,6 +108,7 @@ pub fn main() -> iced::Result {
     window_setting.min_size = Some((900.0, 400.0).into());
 
     iced::application(OptionCalculator::default, OptionCalculator::update, OptionCalculator::view)
+        .title("Which Option")
         .antialiasing(true)
         .font(FIRA_SANS_REGULAR_PATH)
         .font(FIRA_SANS_BOLD_PATH)
