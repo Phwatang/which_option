@@ -17,14 +17,26 @@ use custom_widgets::{
 
 use iced::Alignment::Center;
 use iced::window::Settings;
-use iced::{Element, Font, Left, Length, Subscription, Task};
+use iced::{Element, Font, Left, Length, Subscription, Task, font};
 use iced::widget::{Column, button, column, container, operation, pick_list, responsive, row, rule, scrollable, text, tooltip};
 
 use rust_decimal::prelude::{ToPrimitive};
 
-/// Font to be used by all text rendered with Iced
-// Imported from enabling Iced's "fira-sans" feature
-const FONT_NAME: &str = "Fira Sans";
+const FIRA_SANS_REGULAR_PATH: &[u8] = include_bytes!("fonts\\Fira Sans Regular.ttf");
+const FIRA_SANS_BOLD_PATH: &[u8] = include_bytes!("fonts\\Fira Sans Bold.ttf");
+pub const FIRA_SANS_NAME: &str = "Fira Sans";
+const FIRA_SANS: Font = Font {
+    family: font::Family::Name(FIRA_SANS_NAME),
+    weight: font::Weight::Normal,
+    stretch: font::Stretch::Normal,
+    style: font::Style::Normal,
+};
+const FIRA_SANS_BOLD: Font = Font {
+    family: font::Family::Name(FIRA_SANS_NAME),
+    weight: font::Weight::Bold,
+    stretch: font::Stretch::Normal,
+    style: font::Style::Normal,
+};
 
 /// Limits the number of decimal points the calculator will output and the amount for inputs
 const MAX_DP: usize = 3;
@@ -92,11 +104,14 @@ pub fn main() -> iced::Result {
     tracing_subscriber::fmt::init();
 
     let mut window_setting = Settings::default();
+    window_setting.size = (1000.0, 850.0).into();
     window_setting.min_size = Some((900.0, 400.0).into());
 
     iced::application(OptionCalculator::default, OptionCalculator::update, OptionCalculator::view)
         .antialiasing(true)
-        .default_font(Font::with_name(FONT_NAME))
+        .font(FIRA_SANS_REGULAR_PATH)
+        .font(FIRA_SANS_BOLD_PATH)
+        .default_font(FIRA_SANS)
         .subscription(OptionCalculator::subscription)
         .window(window_setting)
         .run()
@@ -560,11 +575,19 @@ impl OptionCalculator {
     }
 
     fn view(&self) -> Element<'_, Message> {
+        
+        fn header1_text(s: &str) -> iced::widget::Text<'_> {
+            const HEADER1_SIZE: u32 = 20;
+            text(s)
+                .size(HEADER1_SIZE)
+                .font(FIRA_SANS_BOLD)
+        }
+
         row![
             scrollable(column![
                 tooltip(
-                    text("Environment").size(30),
-                    container("Details about the stock in the current moment")
+                    header1_text("Current Environment"),
+                    container("Details about the stock in the current moment.")
                         .padding(5)
                         .style(container::rounded_box),
                     tooltip::Position::FollowCursor
@@ -581,8 +604,8 @@ impl OptionCalculator {
                 rule::horizontal(2),
 
                 tooltip(
-                    text("Prediction").size(30),
-                    container("Prediction on what price the stock will reach and when")
+                    header1_text("Prediction"),
+                    container("Prediction on what price the stock will reach and when.")
                         .padding(5)
                         .style(container::rounded_box),
                     tooltip::Position::FollowCursor
@@ -596,26 +619,38 @@ impl OptionCalculator {
                 rule::horizontal(2),
 
                 tooltip(
-                    Column::with_children(
-                        self.answer_text_block().into_iter().map(|s| text(s).size(20).into())
-                    ),
+                    header1_text("Answer"),
                     container(
-                            "The option contract to buy immediately and to sell\n\
-                            at the prediction end duration that maximises ROI.\n\
-                            Assumes that:\n\
-                            \x20- Environment variables (except stock price)\n\
-                            \x20  stay constant\n\
-                            \x20- Prediction becomes perfectly true\n\
-                            \x20- Strike and expiry are chosen based on\n\
-                            \x20  \"perfectly smooth\" payoff graphs"
+                        "The option contract to buy immediately and to sell\n\
+                        at the prediction end duration that maximises ROI.\n\
+                        Assumes that:\n\
+                        \x20- Current Environment variables \n\
+                        \x20  (except stock price) stay constant\n\
+                        \x20- Prediction becomes perfectly true\n\
+                        \x20- Strike and expiry are chosen based on\n\
+                        \x20  \"perfectly smooth\" payoff graphs"
+                    )
+                    .padding(5)
+                    .style(container::rounded_box),
+                    tooltip::Position::FollowCursor
+                ),
+                Column::with_children(
+                    self.answer_text_block().into_iter().map(|s| text(s).into())
+                ),
+
+                rule::horizontal(2),
+
+                tooltip(
+                    header1_text("Variable Sliders"),
+                    container(
+                        "Numerical sliders to override values for the\n\
+                        option initally purchased or the ending environment.\n\
+                        The slider values only affect the payoff charts."
                         )
                         .padding(5)
                         .style(container::rounded_box),
                     tooltip::Position::FollowCursor
                 ),
-
-                rule::horizontal(2),
-
                 self.sliders.view(|x| x.spacing(5)).map(|msg| Message::Sliders(msg)),
                 row![
                     pick_list(Adjustables::everything(), self.slider_add_select, Message::SliderSelect)
@@ -632,8 +667,21 @@ impl OptionCalculator {
             responsive( |area| {
                 scrollable(
                     column![
+                        container(
+                            tooltip(
+                                header1_text("Charts"),
+                                container(
+                                    "Payoff charts to visualise how final ROI/selling-price\n\
+                                    changes as certain values change. Values are \n\
+                                    overridden/manipulated with the variable sliders."
+                                    )
+                                    .padding(5)
+                                    .style(container::rounded_box),
+                                tooltip::Position::FollowCursor
+                            )
+                        ).width(Length::Fill).align_x(Left),
                         container(self.charts.view(|x| x).map(|msg| Message::Charts(msg)))
-                        .height((0.5 * area.height * self.charts.data.len() as f32) - 80.0),
+                            .height((0.5 * area.height * self.charts.data.len() as f32) - 80.0),
                         container(row![
                             pick_list(PayoffYAxis::everything(), self.chart_y_select, Message::ChartYSelect)
                                 .placeholder("Choose Y-axis Content"),
