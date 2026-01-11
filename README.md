@@ -23,6 +23,7 @@ Important details/notes/bugs about the tool:
  - Prices are rounded to 2 d.p (nearest cent) in the direction that makes practical sense
     - When purchasing an option, prices are rounded up
     - When selling an option, prices are are rounded down
+    - The ROI payoff graphs can look quite jagged due to this
  - When calculating the optimal strike and expiry, gradient ascent is used on non-rounded calculations of Black-Scholes
     - Due to this, the "optimal" contract selected may not be the absolute highest point on the ROI payoff graphs (since the payoff graphs implement rounding)
  - IV is assumed to be constant across time and for all option strikes/expiries
@@ -30,7 +31,7 @@ Important details/notes/bugs about the tool:
     - I.e it pretends volatility smile doesn't exist
 
 ## Quick Guide
-The calculator requires inputs of the "Current Ennvironment" and your "Prediction".
+The calculator requires inputs of the "Current Environment" and your "Prediction".
 
 Lets say we are speculating on stock XYZ. 
 
@@ -60,8 +61,8 @@ The answer will show the call/put option to purchase immediately that maximises 
  - The prediction becomes perfectly true
  - The option is sold at the prediction end duration
 
-So in the image above, the answer says that if the $15 in 6 month prediction becomes true, we should:
-1. Purchase a $11.87 strike call option with 6 months to expiry for the price of $0.84
+So in the image above, the answer says that if the "$15 in 6 months" prediction becomes true, we should:
+1. Immediately purchase a $11.87 strike call option with 6 months to expiry for the price of $0.84
 2. Sell the call option in 6 months time for the price of $3.12
 
 ### Manipulating Variables
@@ -69,6 +70,8 @@ We could obviously not be totally confident in our prediction.
  - Our prediction could be wrong and the XYZ ends up at $11 in 6 months time. This would make the option given for the answer expire worthless and our ROI becomes 0.
 
 To hedge against this we may want to explore our ROI for different ending prices and also different strikes chosen for the option. Things like this can be easilly done by adding "variable sliders" and adding more payoff charts.
+
+https://github.com/user-attachments/assets/d69847a1-6c66-4f2f-a7ac-71983d911dd2
 
 ## Compiling From Source
 Clone/download the repo and execute either of the following commands:
