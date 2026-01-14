@@ -54,6 +54,7 @@ We speculate the XYZ will reach $15 in 6 months (0.5 years). We will thus fill i
 ![Envrionment variable filled](images/guide1.PNG)
 
 We then hit the "Calculate" and...
+
 ![Envrionment variable filled](images/guide2.PNG)
 
 ### Interpreting the Answer
@@ -70,10 +71,28 @@ We could obviously not be totally confident in our prediction.
  - Our prediction could be wrong and the XYZ ends up at $11 in 6 months time. This would make the option given for the answer expire worthless and our ROI becomes 0.
 
 To hedge against this we may want to explore our ROI for different ending prices and also different strikes chosen for the option. Things like this can be easilly done by adding "variable sliders" and adding more payoff charts.
+ - The values given in the user prediction and the calculated "answer" will set the default values. The **variable sliders then override those default values**.
 
 https://github.com/user-attachments/assets/d69847a1-6c66-4f2f-a7ac-71983d911dd2
+
+The variables that can be adjusted are:
+ - **Strike**
+    - The strike price of the initial option chosen
+ - **Expiry**
+    - The expiry duration of the initial option chosen
+ - **Stock end price**
+    - The ending price of the stock at the ending time (when we sell)
+ - **End time**
+    - The amount of time from now until when we sell the option
+    - Obviously this need to be <= to the expiry duration of the option chosen
+ - **End volatility**
+    - The IV priced into the option when we sell it
 
 ## Compiling From Source
 Clone/download the repo and execute either of the following commands:
  - `cargo run` to compile and run a native version
  - `trunk serve` to compile and host a web version
+
+## Future Ambitions
+Add in more "scenarios" this calculator can be used for.
+ - E.g given a predicted change in IV will come true, what is the best calendar spread to buy?
