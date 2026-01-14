@@ -238,7 +238,7 @@ impl Chart<PayoffChartMessage> for PayoffChart {
                 &|coord, size, style| {
                     EmptyElement::at(coord)
                     + Circle::new((0, 0), size, style)
-                    + Text::new(format!("({:.3}, {:.2})", coord.0, coord.1), (0, 15), (CHART_FONT_NAME, 15))
+                    + Text::new(format!("({:.3}, {:.2})", coord.0, coord.1), (8, 8), (CHART_FONT_NAME, 15))
                 },
             )).expect("failed to draw chart data");
         }
