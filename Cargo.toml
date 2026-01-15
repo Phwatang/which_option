@@ -21,3 +21,11 @@ getrandom = { version = "0.2", features = ["js"] }
 
 console_error_panic_hook = "0.1"
 console_log = "1.0"
+
+# Reduce size of wasm binary as small as possible
+[profile.website]
+inherits = "release"
+opt-level = 'z'
+lto = true
+codegen-units = 1
+

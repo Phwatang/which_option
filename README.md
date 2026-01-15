@@ -92,6 +92,7 @@ The variables that can be adjusted are:
 Clone/download the repo and execute either of the following commands:
  - `cargo run` to compile and run a native version
  - `trunk serve` to compile and host a web version
+    - `trunk build --release --cargo-profile website` to compile a size optimised web version
 
 ## Future Ambitions
 Add in more "scenarios" this calculator can be used for.
