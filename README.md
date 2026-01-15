@@ -1,6 +1,9 @@
 # Which Option
 Finance options calculator to inform you what strike and expiry to purchase
 
+A web version of the application can be accessed at: [whichoption.net](https://whichoption.net)
+ - Give some time for the website to load. At time of writing, the WASM binary (uncompressed) size is 6MB.
+
 ![Blank GUI](images/starting_gui.PNG)
 
 ## How is it Different From Other Tools?
@@ -47,7 +50,7 @@ For our example we will say that:
  - "Risk free rate": 0.04
  - "Dividend yield": 0
 
-We speculate the XYZ will reach $15 in 6 months (0.5 years). We will thus fill in the "Prediction" variable with:
+We speculate that XYZ will reach $15 in 6 months (0.5 years). We will thus fill in the "Prediction" variable with:
  - "Prediction stock price": 15
  - "Prediction end duration": 0.5
 
